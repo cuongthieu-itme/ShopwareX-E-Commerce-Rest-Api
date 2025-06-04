@@ -2,6 +2,7 @@
 using ShopwareX.Dtos.GeneralResponse;
 using ShopwareX.Dtos.Login;
 using ShopwareX.Services.Abstracts;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace ShopwareX.Controllers
 {
@@ -11,7 +12,13 @@ namespace ShopwareX.Controllers
     {
         private readonly IAuthService _authService = authService;
 
+        /// <param name="dto">Login credentials containing email and password</param>
+        /// <returns>JWT token and user information if login successful</returns>
+        /// <response code="200">Login successful - returns JWT token</response>
+        /// <response code="401">Login failed - incorrect email or password</response>
         [HttpPost("login")]
+        [SwaggerResponse(200, "Login successful", typeof(ApiResponse<LoginResponseDto>))]
+        [SwaggerResponse(401, "Login failed - incorrect credentials", typeof(ApiResponse<LoginResponseDto>))]
         public async Task<ActionResult<ApiResponse<LoginResponseDto>>>
             LoginUserAsync([FromBody] LoginRequestDto dto)
         {

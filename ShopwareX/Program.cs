@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using ShopwareX.Auth;
 using ShopwareX.DataContext;
 using ShopwareX.Mapper;
@@ -8,6 +9,7 @@ using ShopwareX.Repositories.Abstracts;
 using ShopwareX.Repositories.Concretes;
 using ShopwareX.Services.Abstracts;
 using ShopwareX.Services.Concretes;
+using System.Reflection;
 using System.Text;
 
 namespace ShopwareX
@@ -75,9 +77,69 @@ namespace ShopwareX
 
             builder.Services.AddAuthorization();
 
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+            // Configure Swagger/OpenAPI
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
+            builder.Services.AddSwaggerGen(options =>
+            {
+                options.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Version = "v1",
+                    Title = "ShopwareX E-Commerce API",
+                    Description = "A REST API for e-commerce system with role-based authentication (Super Admin, Admin, User). " +
+                                 "Features include user management, product catalog, order processing, and JWT authentication.",
+                    Contact = new OpenApiContact
+                    {
+                        Name = "ShopwareX API Support",
+                        Email = "support@shopwarex.com"
+                    },
+                    License = new OpenApiLicense
+                    {
+                        Name = "MIT License",
+                        Url = new Uri("https://opensource.org/licenses/MIT")
+                    }
+                });
+
+                // Add JWT Authentication to Swagger
+                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Name = "Authorization",
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "Bearer",
+                    BearerFormat = "JWT",
+                    In = ParameterLocation.Header,
+                    Description = "JWT Authorization header using the Bearer scheme. \r\n\r\n " +
+                                 "Enter 'Bearer' [space] and then your token in the text input below.\r\n\r\n" +
+                                 "Example: \"Bearer 12345abcdef\""
+                });
+
+                options.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        new string[] {}
+                    }
+                });
+
+                // Include XML comments if available
+                var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+                var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFilename);
+                if (File.Exists(xmlPath))
+                {
+                    options.IncludeXmlComments(xmlPath);
+                }
+
+                // Configure for better API documentation
+                options.EnableAnnotations();
+                options.UseInlineDefinitionsForEnums();
+                options.DescribeAllParametersInCamelCase();
+            });
 
             var app = builder.Build();
 
@@ -85,7 +147,19 @@ namespace ShopwareX
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
-                app.UseSwaggerUI();
+                app.UseSwaggerUI(options =>
+                {
+                    options.SwaggerEndpoint("/swagger/v1/swagger.json", "ShopwareX E-Commerce API v1");
+                    options.RoutePrefix = string.Empty; // Serve Swagger UI at root
+                    options.DocumentTitle = "ShopwareX API Documentation";
+                    options.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.List);
+                    options.DefaultModelRendering(Swashbuckle.AspNetCore.SwaggerUI.ModelRendering.Example);
+                    options.DisplayRequestDuration();
+                    options.EnableDeepLinking();
+                    options.EnableFilter();
+                    options.ShowExtensions();
+                    options.EnableValidator();
+                });
             }
 
             app.UseHttpsRedirection();
